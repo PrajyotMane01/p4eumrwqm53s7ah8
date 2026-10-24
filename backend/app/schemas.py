@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -8,6 +9,9 @@ class Coverage(BaseModel):
     last_date: date | None = Field(description="Last UK delivery day with stored actuals")
     refreshed_at: datetime | None = Field(description="When the data was last loaded from Elexon")
     default_cutoff: time
+    source: Literal["database", "elexon"] = Field(
+        description="'elexon' when the database was unavailable and data was fetched live from Elexon"
+    )
 
 
 class SeriesPoint(BaseModel):

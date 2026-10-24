@@ -121,7 +121,7 @@ def test_missing_d1_credentials_give_503_not_500(monkeypatch: pytest.MonkeyPatch
     for path in ("/api/v1/coverage", "/api/v1/series"):
         res = client.get(path)
         assert res.status_code == 503
-        assert res.json() == {"detail": "Database unavailable"}
+        assert res.json() == {"detail": "Data unavailable"}
 
 
 def test_metrics_scores_only_half_hours_with_both_values() -> None:
@@ -144,3 +144,60 @@ def test_metrics_cutoff_and_validation_match_series() -> None:
 def test_metrics_without_scorable_data_has_null_summary() -> None:
     body = client.get("/api/v1/metrics", params={"start": "2026-01-16", "end": "2026-01-16"}).json()
     assert body["summary"] is None and body["histogram"] == [] and body["worst_days"] == []
+
+
+def _break_database_and_mock_elexon(monkeypatch: pytest.MonkeyPatch, elexon_status: int = 200) -> list[str]:
+    """Make the database unreadable and route Elexon calls to a fake. Returns the requested paths."""
+    import httpx
+
+    from app import data_store
+    from app.config import get_settings
+    from app.data_store import get_data_store
+
+    calls: list[str] = []
+
+    def fake_elexon(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if elexon_status != 200:
+            return httpx.Response(elexon_status)
+        if "FUELHH" in request.url.path:
+            rows = [{"startTime": t, "publishTime": t, "fuelType": "WIND", "generation": 7000} for t, *_ in ACTUALS[:2]]
+        else:
+            rows = [{"publishTime": "2026-01-14T09:30:00Z", "startTime": "2026-01-15T00:00:00Z", "generation": 7500}]
+        return httpx.Response(200, json=rows)
+
+    monkeypatch.setattr(
+        data_store,
+        "elexon_client",
+        lambda: httpx.AsyncClient(base_url="https://test", transport=httpx.MockTransport(fake_elexon)),
+    )
+    monkeypatch.setenv("DB_BACKEND", "d1")
+    monkeypatch.setenv("D1_AUTH", "token")
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "")  # the database cannot be reached
+    monkeypatch.setenv("ELEXON_FALLBACK", "true")
+    for cache in (get_settings, get_default_database, get_data_store):
+        cache.cache_clear()
+    return calls
+
+
+def test_falls_back_to_live_elexon_when_database_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _break_database_and_mock_elexon(monkeypatch)
+    coverage = client.get("/api/v1/coverage")
+    assert coverage.status_code == 200
+    assert coverage.json()["source"] == "elexon"
+    series = client.get("/api/v1/series", params={"start": "2026-01-15", "end": "2026-01-15"}).json()
+    first = series["points"][0]
+    assert (first["actual_mw"], first["forecast_mw"]) == (7000.0, 7500.0)
+    fetched = len(calls)
+    client.get("/api/v1/metrics", params={"start": "2026-01-15", "end": "2026-01-15"})
+    assert len(calls) == fetched  # the live copy is cached, not fetched again per request
+
+
+def test_503_when_database_and_elexon_are_both_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    _break_database_and_mock_elexon(monkeypatch, elexon_status=400)
+    res = client.get("/api/v1/coverage")
+    assert res.status_code == 503 and res.json() == {"detail": "Data unavailable"}
+
+
+def test_coverage_reports_database_as_source() -> None:
+    assert client.get("/api/v1/coverage").json()["source"] == "database"

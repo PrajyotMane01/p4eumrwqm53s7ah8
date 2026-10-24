@@ -3,6 +3,7 @@ export type Coverage = {
   last_date: string | null
   refreshed_at: string | null
   default_cutoff: string // "HH:MM:SS"
+  source: 'database' | 'elexon' // 'elexon': database unavailable, fetched live
 }
 
 export type SeriesPoint = {

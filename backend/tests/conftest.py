@@ -13,6 +13,7 @@ def isolated_settings(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Iterator[Non
     """Each test gets its own SQLite file and fresh cached settings and database."""
     monkeypatch.setenv("DB_BACKEND", "sqlite")
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("ELEXON_FALLBACK", "false")  # tests never reach the real Elexon API
     monkeypatch.setattr(elexon, "RETRY_DELAY", 0)
     caches = (get_settings, get_default_database, get_data_store)
     for cache in caches:

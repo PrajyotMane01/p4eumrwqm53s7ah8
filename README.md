@@ -48,6 +48,7 @@ flowchart LR
   E[Elexon BMRS API<br/>FUELHH, WINDFOR] -->|python -m app.ingest refresh| L[Loader<br/>chunked fetch, retries,<br/>dedupe, UK days]
   L --> DB[(Cloudflare D1<br/>or local SQLite)]
   DB -->|loaded once, cached 15 min| API[FastAPI<br/>/api/v1]
+  E -.->|fallback if the database is unavailable| API
   API --> S[Selection<br/>forecast at cutoff]
   S --> M[Metrics<br/>pandas, NumPy]
   API -->|JSON| UI[React + TypeScript<br/>ECharts, TanStack Query]
@@ -55,6 +56,7 @@ flowchart LR
 
 - **Backend:** FastAPI (Python 3.12, async) with pandas and NumPy. The selection rule uses `pandas.merge_asof` to pick the latest run published at or before each cutoff.
 - **Database:** Cloudflare D1 in production, or a local SQLite file. D1 is SQLite, so both use the same schema and SQL. Python talks to D1 over its HTTP API, with inserts batched under D1's 100-parameter limit.
+- **Fallback:** if the database cannot be read (an expired token, an outage, missing credentials), the API fetches the January window straight from Elexon with the same loader code, about 9 seconds on first request and cached after that. `/coverage` reports `source: "elexon"` and the sidebar says so. Only if Elexon is also unavailable does the API return 503. Turn it off with `ELEXON_FALLBACK=false`.
 - **Frontend:** React 19 + TypeScript (Vite), TanStack Query for data fetching and ECharts for charts. Filters are validated, clamped and normalised when read from the URL.
 - **Deployment:** Vercel, with two [Services](https://vercel.com/docs/services) in one project: the Vite static site, and FastAPI as a Python function under `/api`.
 
@@ -65,11 +67,11 @@ Interactive docs are at `/docs` when running locally.
 | Route | Returns |
 | --- | --- |
 | `GET /api/v1/health` | API and database status |
-| `GET /api/v1/coverage` | First and last complete delivery days stored, when data was last loaded, the default cutoff |
+| `GET /api/v1/coverage` | First and last complete delivery days, when data was last loaded, the default cutoff, and the data source (`database` or `elexon`) |
 | `GET /api/v1/series?start=&end=&cutoff=` | Actual and selected forecast per half-hour, with publish time and lead time |
 | `GET /api/v1/metrics?start=&end=&cutoff=` | Summary error figures, histogram, by hour, by forecast level, worst days |
 
-`start` and `end` are UK delivery days (both included, up to 62 days). `cutoff` is `HH:MM` UK time on the day before delivery. Invalid input returns 422; a database problem returns 503.
+`start` and `end` are UK delivery days (both included, up to 62 days). `cutoff` is `HH:MM` UK time on the day before delivery. Invalid input returns 422. If neither the database nor Elexon can provide data, it returns 503.
 
 ## Run it
 
@@ -160,13 +162,13 @@ npx vercel deploy --prod
 | `backend/app/schemas.py` | Pydantic response models |
 | `backend/app/analysis/selection.py` | The day-ahead rule: the forecast available at the cutoff, per half-hour, in UK delivery days |
 | `backend/app/analysis/metrics.py` | Error figures, histogram, breakdowns, worst days |
-| `backend/app/data_store.py` | In-memory copy of the stored data, refreshed every 15 minutes |
+| `backend/app/data_store.py` | In-memory copy of the data, refreshed every 15 minutes, with the live Elexon fallback |
 | `backend/app/db.py` | Database layer: local SQLite or Cloudflare D1 over HTTP |
 | `backend/app/ingest/` | Loader: Elexon client (`elexon.py`), storage (`store.py`), refresh flow (`refresh.py`), command line (`__main__.py`) |
 | `backend/app/wrangler_auth.py` | Development only: reuse and renew the Wrangler login for D1 |
 | `backend/app/config.py` | Settings from environment variables or `.env` |
 | `backend/migrations/` | SQL schema |
-| `backend/tests/` | pytest: selection, metrics, loader, storage, API, config, auth (54 tests) |
+| `backend/tests/` | pytest: selection, metrics, loader, storage, API, fallback, config, auth (57 tests) |
 | `backend/Dockerfile` | Backend image: loads data if empty, then runs uvicorn |
 | `frontend/` | React + TypeScript app (Vite) |
 | `frontend/src/App.tsx` | Layout and view switching |
@@ -182,7 +184,6 @@ npx vercel deploy --prod
 
 ## Limitations and next steps
 
-- **Fallback to live Elexon:** if the database is unavailable, fetch directly from Elexon. This is planned; today the app shows a clear error with a retry.
 - **Curtailment:** the over-forecast at high wind cannot be confirmed with these two datasets alone. Curtailment data would explain it.
 - **Freshness:** the API keeps data in memory for 15 minutes, so a refresh shows up after that.
 - **Scheduled loading:** in production, the loader would run on a schedule, for example hourly, to pick up new forecast runs.

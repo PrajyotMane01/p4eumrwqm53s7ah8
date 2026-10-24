@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     cloudflare_api_token: str = ""
 
     elexon_base_url: str = "https://data.elexon.co.uk/bmrs/api/v1"
+    # If the database cannot be read, serve the default window straight from Elexon
+    elexon_fallback: bool = True
 
     @property
     def d1_configured(self) -> bool:

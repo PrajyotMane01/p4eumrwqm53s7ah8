@@ -1,10 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import httpx
 
 from app.db import Database
 from app.ingest.elexon import fetch_actuals, fetch_forecasts, to_iso
 from app.ingest.store import migrate, record_run, upsert
+
+# Decisions made in January 2026 cover delivery from 1 Jan up to and including 1 Feb (end exclusive)
+DEFAULT_START = date(2026, 1, 1)
+DEFAULT_END = date(2026, 2, 2)
 
 
 async def refresh(db: Database, client: httpx.AsyncClient, start: datetime, end: datetime) -> dict[str, int]:

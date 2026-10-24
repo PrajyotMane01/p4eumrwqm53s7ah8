@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.analysis import metrics
 from app.analysis.selection import DEFAULT_CUTOFF, UK, half_hours, select_day_ahead
-from app.data_store import Snapshot, get_data_store
-from app.db import DatabaseError
+from app.data_store import DataUnavailableError, Snapshot, get_data_store
 from app.schemas import AccuracySummary, Coverage, Metrics, Series, SeriesPoint
 
 MAX_RANGE_DAYS = 62
@@ -17,10 +16,9 @@ router = APIRouter()
 
 async def snapshot() -> Snapshot:
     try:
-        # Created inside the try: missing credentials are a database problem (503), not a crash
         return await get_data_store().get()
-    except DatabaseError as exc:
-        raise HTTPException(status_code=503, detail="Database unavailable") from exc
+    except DataUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="Data unavailable") from exc
 
 
 def _delivery_dates(snap: Snapshot) -> tuple[date | None, date | None]:
@@ -37,7 +35,13 @@ def _none_if_missing(value: object) -> object:
 @router.get("/coverage", response_model=Coverage)
 async def coverage(snap: Annotated[Snapshot, Depends(snapshot)]) -> Coverage:
     first, last = _delivery_dates(snap)
-    return Coverage(first_date=first, last_date=last, refreshed_at=snap.refreshed_at, default_cutoff=DEFAULT_CUTOFF)
+    return Coverage(
+        first_date=first,
+        last_date=last,
+        refreshed_at=snap.refreshed_at,
+        default_cutoff=DEFAULT_CUTOFF,
+        source=snap.source,
+    )
 
 
 StartQuery = Annotated[date | None, Query(description="First UK delivery day (inclusive)")]

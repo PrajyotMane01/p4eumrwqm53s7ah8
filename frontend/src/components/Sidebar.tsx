@@ -47,7 +47,11 @@ export function Sidebar({ coverage, view, onNavigate }: Props) {
       <div className="source-card">
         <p className="source-title">Data source</p>
         <p>Elexon BMRS: FUELHH actuals and WINDFOR forecasts, GB national wind.</p>
-        {coverage?.refreshed_at && <p className="source-meta">Loaded {formatUkDateTime(coverage.refreshed_at)} UK</p>}
+        {coverage?.source === 'elexon' ? (
+          <p className="source-meta">Live from Elexon: the database is unavailable, so data was fetched directly.</p>
+        ) : (
+          coverage?.refreshed_at && <p className="source-meta">Loaded {formatUkDateTime(coverage.refreshed_at)} UK</p>
+        )}
       </div>
     </aside>
   )

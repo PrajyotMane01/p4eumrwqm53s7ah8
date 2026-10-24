@@ -16,12 +16,8 @@ import httpx
 from app.analysis.selection import uk_day_bounds
 from app.config import get_settings
 from app.db import get_database
-from app.ingest.refresh import refresh
+from app.ingest.refresh import DEFAULT_END, DEFAULT_START, refresh
 from app.ingest.store import migrate
-
-# Decisions made in January 2026 cover delivery from 1 Jan up to and including 1 Feb
-DEFAULT_START = date(2026, 1, 1)
-DEFAULT_END = date(2026, 2, 2)
 
 log = logging.getLogger("ingest")
 

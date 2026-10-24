@@ -5,7 +5,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.analysis.selection import DEFAULT_CUTOFF, UK, half_hours, select_day_ahead
-from app.data_store import DataStore, Snapshot, get_data_store
+from app.data_store import Snapshot, get_data_store
 from app.db import DatabaseError
 from app.schemas import Coverage, Series, SeriesPoint
 
@@ -14,9 +14,10 @@ MAX_RANGE_DAYS = 62
 router = APIRouter()
 
 
-async def snapshot(store: Annotated[DataStore, Depends(get_data_store)]) -> Snapshot:
+async def snapshot() -> Snapshot:
     try:
-        return await store.get()
+        # Created inside the try: missing credentials are a database problem (503), not a crash
+        return await get_data_store().get()
     except DatabaseError as exc:
         raise HTTPException(status_code=503, detail="Database unavailable") from exc
 

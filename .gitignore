@@ -1,1 +1,4 @@
 compose.override.yaml
+.vercel
+.env*
+!.env.example

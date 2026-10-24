@@ -1,0 +1,13 @@
+# Never upload secrets or local state with `vercel deploy`
+**/.env
+**/.env.*
+!**/.env.example
+compose.override.yaml
+backend/data/
+backend/.venv/
+backend/.pytest_cache/
+backend/.ruff_cache/
+**/__pycache__/
+frontend/node_modules/
+frontend/dist/
+Docs/

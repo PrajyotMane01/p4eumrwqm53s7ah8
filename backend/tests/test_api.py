@@ -107,3 +107,18 @@ def test_fresh_database_reads_as_empty(monkeypatch: pytest.MonkeyPatch, tmp_path
     res = client.get("/api/v1/coverage")
     assert res.status_code == 200
     assert (res.json()["first_date"], res.json()["last_date"]) == (None, None)
+
+
+def test_missing_d1_credentials_give_503_not_500(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import get_settings
+    from app.data_store import get_data_store
+
+    monkeypatch.setenv("DB_BACKEND", "d1")
+    monkeypatch.setenv("D1_AUTH", "token")
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "")
+    for cache in (get_settings, get_default_database, get_data_store):
+        cache.cache_clear()
+    for path in ("/api/v1/coverage", "/api/v1/series"):
+        res = client.get(path)
+        assert res.status_code == 503
+        assert res.json() == {"detail": "Database unavailable"}

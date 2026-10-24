@@ -18,10 +18,12 @@ export function useFilters(coverage: LoadedCoverage) {
   const isDefault = filters.start === defaults.start && filters.end === defaults.end && filters.cutoff === defaults.cutoff
   const view: View = url.view === 'accuracy' ? 'accuracy' : 'day-ahead'
 
-  // Rewrite invalid or out-of-range URL values so the address bar matches what is shown
-  const needsCorrection = Object.keys(corrections).length > 0 || (url.view !== null && url.view !== view)
+  // Rewrite invalid or out-of-range URL values so the address bar matches what is shown.
+  // Day-ahead is the default view, so an unknown view is removed rather than spelled out.
+  const badView = url.view !== null && url.view !== 'accuracy'
+  const needsCorrection = Object.keys(corrections).length > 0 || badView
   useEffect(() => {
-    if (needsCorrection) setUrl({ ...corrections, ...(url.view !== view ? { view } : {}) })
+    if (needsCorrection) setUrl({ ...corrections, ...(badView ? { view: '' } : {}) })
   })
 
   return {
@@ -30,7 +32,8 @@ export function useFilters(coverage: LoadedCoverage) {
     isDefault,
     setFilters: setUrl,
     resetFilters: () => setUrl({ start: '', end: '', cutoff: '' }),
-    // Day-ahead is the default view, so it is left out of the URL
-    setView: (next: View) => setUrl({ view: next === 'day-ahead' ? '' : next }),
+    // Moving between views adds a history entry, so Back returns to where the user was
+    setView: (next: View) => setUrl({ view: next === 'day-ahead' ? '' : next }, { push: true }),
+    openDay: (day: string) => setUrl({ view: '', start: day, end: day }, { push: true }),
   }
 }

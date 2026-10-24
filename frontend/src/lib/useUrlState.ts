@@ -21,8 +21,11 @@ export function useUrlState<K extends string>(keys: readonly K[]) {
   const params = new URLSearchParams(search)
   const values = Object.fromEntries(keys.map((k) => [k, params.get(k)])) as Record<K, string | null>
 
-  /** Set or, with an empty string, remove params. Replaces the history entry rather than adding one. */
-  const setValues = useCallback((next: Partial<Record<K, string>>) => {
+  /**
+   * Set or, with an empty string, remove params. By default the history entry is replaced, so
+   * editing a filter does not fill up Back; pass `push` for moves the user may want to undo.
+   */
+  const setValues = useCallback((next: Partial<Record<K, string>>, { push = false } = {}) => {
     const updated = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(next)) {
       if (value) updated.set(key, value as string)
@@ -30,7 +33,9 @@ export function useUrlState<K extends string>(keys: readonly K[]) {
     }
     // Colons are valid in a query string; keep them readable (cutoff=09:20, not 09%3A20)
     const query = updated.toString().replace(/%3A/gi, ':')
-    window.history.replaceState(null, '', query ? `?${query}` : window.location.pathname)
+    const target = query ? `?${query}` : window.location.pathname
+    if (push) window.history.pushState(null, '', target)
+    else window.history.replaceState(null, '', target)
     window.dispatchEvent(new Event(URL_CHANGE))
   }, [])
 

@@ -187,6 +187,12 @@ export function AccuracyPage({ filters, onOpenDay }: Props) {
           {pct(s.over_forecast_share)} of half-hours, so relying on it as-is leads to under-buying. Holding back{' '}
           <b>{formatMw(Math.max(s.p90_mw, 0))}</b> would have covered the shortfall in 9 of 10 half-hours.
         </p>
+        {s.missing > 0 && (
+          <p className="insight-note">
+            Scored {s.half_hours.toLocaleString('en-GB')} of {(s.half_hours + s.missing).toLocaleString('en-GB')}{' '}
+            half-hours: {s.missing.toLocaleString('en-GB')} had no forecast published by the cutoff, or no actual.
+          </p>
+        )}
         <p className="insight-note">
           The over-forecast grows with wind level (below). That pattern is consistent with wind farms being curtailed
           at high output, which these two datasets cannot confirm.

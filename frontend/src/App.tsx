@@ -18,7 +18,7 @@ const PAGES = {
 }
 
 function Workspace({ coverage }: { coverage: LoadedCoverage }) {
-  const { view, filters, isDefault, setFilters, resetFilters, setView } = useFilters(coverage)
+  const { view, filters, isDefault, setFilters, resetFilters, setView, openDay } = useFilters(coverage)
   const page = PAGES[view]
   return (
     <div className="layout">
@@ -34,7 +34,7 @@ function Workspace({ coverage }: { coverage: LoadedCoverage }) {
           onReset={resetFilters}
         />
         {view === 'accuracy' ? (
-          <AccuracyPage filters={filters} onOpenDay={(day) => setFilters({ view: '', start: day, end: day })} />
+          <AccuracyPage filters={filters} onOpenDay={openDay} />
         ) : (
           <DayAheadPage filters={filters} />
         )}

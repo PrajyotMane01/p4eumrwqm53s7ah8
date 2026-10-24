@@ -13,8 +13,22 @@ UK national wind generation: day-ahead forecasts vs actuals (Elexon BMRS), for p
 | `backend/tests/` | pytest tests |
 | `frontend/` | React + TypeScript app (Vite) |
 | `Docs/` | Problem statement and tech stack notes |
+| `compose.yaml` | Runs backend and frontend together in Docker |
+| `backend/Dockerfile` | Backend image (uvicorn on port 8000) |
+| `frontend/Dockerfile`, `frontend/nginx.conf` | Frontend image: static build served by nginx, `/api` proxied to the backend |
 
-## Run locally
+## Run with Docker
+
+```bash
+docker compose up --build
+```
+
+- App: http://localhost:8080
+- API: http://localhost:8000/api/v1/health (docs at http://localhost:8000/docs)
+
+D1 credentials are read from `backend/.env` if it exists.
+
+## Run locally without Docker
 
 Backend:
 

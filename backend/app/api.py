@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.analysis import metrics
 from app.analysis.selection import DEFAULT_CUTOFF, UK, half_hours, select_day_ahead
 from app.data_store import DataUnavailableError, Snapshot, get_data_store
-from app.schemas import AccuracySummary, Coverage, Metrics, Series, SeriesPoint
+from app.schemas import AccuracySummary, Coverage, DataStatus, DayCoverage, IngestRun, Metrics, Series, SeriesPoint
 
 MAX_RANGE_DAYS = 62
 
@@ -130,4 +130,39 @@ async def accuracy(
         by_hour=metrics.by_hour(rows),
         by_forecast_level=metrics.by_forecast_level(rows),
         worst_days=metrics.worst_days(rows),
+    )
+
+
+@router.get("/data", response_model=DataStatus)
+async def data_status(snap: Annotated[Snapshot, Depends(snapshot)]) -> DataStatus:
+    """What is loaded: coverage per UK delivery day, forecast runs, and recent loads."""
+    first, last = _delivery_dates(snap)
+    actual_days = snap.actuals["start_time"].dt.tz_convert(UK).dt.date.value_counts()
+    publish = snap.forecasts["publish_time"].drop_duplicates()
+    run_days = publish.dt.tz_convert(UK).dt.date.value_counts()
+    days = []
+    if not actual_days.empty:
+        day, final = min(actual_days.index), max(actual_days.index)
+        while day <= final:
+            days.append(
+                DayCoverage(
+                    delivery_date=day,
+                    expected_half_hours=len(half_hours(day, day + timedelta(days=1))),
+                    actual_half_hours=int(actual_days.get(day, 0)),
+                    forecast_runs=int(run_days.get(day, 0)),
+                )
+            )
+            day += timedelta(days=1)
+    return DataStatus(
+        source=snap.source,
+        refreshed_at=snap.refreshed_at,
+        first_date=first,
+        last_date=last,
+        actual_rows=len(snap.actuals),
+        forecast_rows=len(snap.forecasts),
+        forecast_runs=len(publish),
+        first_publish_time=_none_if_missing(publish.min()) if len(publish) else None,
+        last_publish_time=_none_if_missing(publish.max()) if len(publish) else None,
+        days=days,
+        runs=[IngestRun(**run) for run in snap.runs],
     )

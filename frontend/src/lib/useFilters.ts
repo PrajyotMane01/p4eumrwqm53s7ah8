@@ -5,7 +5,7 @@ import { useUrlState } from './useUrlState'
 
 const KEYS = ['view', 'start', 'end', 'cutoff'] as const
 
-export type View = 'day-ahead' | 'accuracy'
+export type View = 'day-ahead' | 'accuracy' | 'data'
 
 export type LoadedCoverage = Coverage & { first_date: string; last_date: string }
 
@@ -16,11 +16,11 @@ export function useFilters(coverage: LoadedCoverage) {
   const { filters, corrections } = resolveFilters(url, bounds)
   const defaults = resolveFilters({ start: null, end: null, cutoff: null }, bounds).filters
   const isDefault = filters.start === defaults.start && filters.end === defaults.end && filters.cutoff === defaults.cutoff
-  const view: View = url.view === 'accuracy' ? 'accuracy' : 'day-ahead'
+  const view: View = url.view === 'accuracy' || url.view === 'data' ? url.view : 'day-ahead'
 
   // Rewrite invalid or out-of-range URL values so the address bar matches what is shown.
   // Day-ahead is the default view, so an unknown view is removed rather than spelled out.
-  const badView = url.view !== null && url.view !== 'accuracy'
+  const badView = url.view !== null && url.view !== 'accuracy' && url.view !== 'data'
   const needsCorrection = Object.keys(corrections).length > 0 || badView
   useEffect(() => {
     if (needsCorrection) setUrl({ ...corrections, ...(badView ? { view: '' } : {}) })

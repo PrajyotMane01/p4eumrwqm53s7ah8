@@ -14,7 +14,9 @@ Scope, as set by the brief: national wind only, from two Elexon BMRS datasets ([
 
 **Accuracy view.** It shows MAE, bias, RMSE, P10/P50/P90 error and the share of half-hours that were over-forecast, plus a plain-language buying summary. Charts break the error down by error size, by forecast wind level and by hour of day. A worst-days table links each day back to the Day-ahead view.
 
-Both views share the filters for date range and cutoff. Filters live in the URL, so any view can be bookmarked or shared, for example `?view=accuracy&start=2026-01-10&end=2026-01-20&cutoff=09:20`.
+**Data view.** It shows what is loaded and where it came from: delivery days and completeness, forecast runs, when the data was last loaded (or that it was fetched live), daily coverage per UK delivery day, short definitions of both Elexon datasets, and the load history.
+
+The Day-ahead and Accuracy views share the filters for date range and cutoff. Filters live in the URL, so any view can be bookmarked or shared, for example `?view=accuracy&start=2026-01-10&end=2026-01-20&cutoff=09:20`.
 
 ### Findings for January 2026 (09:50 cutoff)
 
@@ -70,6 +72,7 @@ Interactive docs are at `/docs` when running locally.
 | `GET /api/v1/coverage` | First and last complete delivery days, when data was last loaded, the default cutoff, and the data source (`database` or `elexon`) |
 | `GET /api/v1/series?start=&end=&cutoff=` | Actual and selected forecast per half-hour, with publish time and lead time |
 | `GET /api/v1/metrics?start=&end=&cutoff=` | Summary error figures, histogram, by hour, by forecast level, worst days |
+| `GET /api/v1/data` | Data status: source, completeness per delivery day, forecast runs, recent loads |
 
 `start` and `end` are UK delivery days (both included, up to 62 days). `cutoff` is `HH:MM` UK time on the day before delivery. Invalid input returns 422. If neither the database nor Elexon can provide data, it returns 503.
 
@@ -158,7 +161,7 @@ npx vercel deploy --prod
 | --- | --- |
 | `backend/` | FastAPI app (Python 3.12, managed with uv) |
 | `backend/app/main.py` | App entry point and health route |
-| `backend/app/api.py` | `/coverage`, `/series` and `/metrics` routes, with shared range checks |
+| `backend/app/api.py` | `/coverage`, `/series`, `/metrics` and `/data` routes, with shared range checks |
 | `backend/app/schemas.py` | Pydantic response models |
 | `backend/app/analysis/selection.py` | The day-ahead rule: the forecast available at the cutoff, per half-hour, in UK delivery days |
 | `backend/app/analysis/metrics.py` | Error figures, histogram, breakdowns, worst days |
@@ -168,11 +171,11 @@ npx vercel deploy --prod
 | `backend/app/wrangler_auth.py` | Development only: reuse and renew the Wrangler login for D1 |
 | `backend/app/config.py` | Settings from environment variables or `.env` |
 | `backend/migrations/` | SQL schema |
-| `backend/tests/` | pytest: selection, metrics, loader, storage, API, fallback, config, auth (57 tests) |
+| `backend/tests/` | pytest: selection, metrics, loader, storage, API, fallback, config, auth (59 tests) |
 | `backend/Dockerfile` | Backend image: loads data if empty, then runs uvicorn |
 | `frontend/` | React + TypeScript app (Vite) |
 | `frontend/src/App.tsx` | Layout and view switching |
-| `frontend/src/components/` | Pages (`DayAheadPage`, `AccuracyPage`), charts (`EChart`, `SeriesChart`), sidebar, filters, cards |
+| `frontend/src/components/` | Pages (`DayAheadPage`, `AccuracyPage`, `DataPage`), charts (`EChart`, `SeriesChart`), sidebar, filters, cards |
 | `frontend/src/lib/` | API client, URL state and filter validation, UK time helpers, formatting |
 | `frontend/src/lib/filters.test.ts` | Vitest tests for URL filter handling (25 tests) |
 | `frontend/Dockerfile`, `frontend/nginx.conf` | Frontend image: static build served by nginx, `/api` proxied to the backend |

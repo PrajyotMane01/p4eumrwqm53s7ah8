@@ -77,3 +77,19 @@ export type Metrics = {
 }
 
 export const fetchMetrics = (query: SeriesQuery) => getJson<Metrics>('/api/v1/metrics', query)
+
+export type DataStatus = {
+  source: 'database' | 'elexon'
+  refreshed_at: string | null
+  first_date: string | null
+  last_date: string | null
+  actual_rows: number
+  forecast_rows: number
+  forecast_runs: number
+  first_publish_time: string | null
+  last_publish_time: string | null
+  days: { delivery_date: string; expected_half_hours: number; actual_half_hours: number; forecast_runs: number }[]
+  runs: { dataset: string; range_start: string; range_end: string; row_count: number; finished_at: string }[]
+}
+
+export const fetchDataStatus = () => getJson<DataStatus>('/api/v1/data')

@@ -82,3 +82,32 @@ class Metrics(BaseModel):
     by_hour: list[HourStats]
     by_forecast_level: list[LevelStats]
     worst_days: list[DayStats]
+
+
+class DayCoverage(BaseModel):
+    delivery_date: date
+    expected_half_hours: int = Field(description="46, 48 or 50, depending on clock changes")
+    actual_half_hours: int
+    forecast_runs: int = Field(description="WINDFOR runs published on this UK day")
+
+
+class IngestRun(BaseModel):
+    dataset: str
+    range_start: datetime
+    range_end: datetime
+    row_count: int
+    finished_at: datetime
+
+
+class DataStatus(BaseModel):
+    source: Literal["database", "elexon"]
+    refreshed_at: datetime | None
+    first_date: date | None
+    last_date: date | None
+    actual_rows: int
+    forecast_rows: int
+    forecast_runs: int = Field(description="Distinct WINDFOR publish times stored")
+    first_publish_time: datetime | None
+    last_publish_time: datetime | None
+    days: list[DayCoverage]
+    runs: list[IngestRun] = Field(description="Most recent loads, newest first; empty for live data")

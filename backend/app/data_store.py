@@ -27,6 +27,7 @@ from app.ingest.refresh import DEFAULT_END, DEFAULT_START
 from app.ingest.store import migrate
 
 TTL_SECONDS = 15 * 60
+RECENT_RUNS = 20
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class Snapshot:
     forecasts: pd.DataFrame  # publish_time, start_time, generation_mw
     refreshed_at: str | None  # when the data was loaded from Elexon (UTC ISO), if known
     source: Source = "database"
+    runs: tuple[dict, ...] = ()  # recent ingest runs, newest first (none for live data)
 
 
 def _frame(rows: list[dict], columns: list[str]) -> pd.DataFrame:
@@ -58,11 +60,15 @@ async def load_snapshot(db: Database) -> Snapshot:
     await migrate(db)  # a fresh database then reads as empty rather than failing
     actuals = await db.query("SELECT start_time, generation_mw FROM actuals")
     forecasts = await db.query("SELECT publish_time, start_time, generation_mw FROM forecasts")
-    runs = await db.query("SELECT MAX(finished_at) AS refreshed_at FROM ingest_runs")
+    runs = await db.query(
+        "SELECT dataset, range_start, range_end, row_count, finished_at FROM ingest_runs ORDER BY id DESC LIMIT ?",
+        [RECENT_RUNS],
+    )
     return Snapshot(
         actuals=_frame(actuals, ["start_time", "generation_mw"]),
         forecasts=_frame(forecasts, ["publish_time", "start_time", "generation_mw"]),
-        refreshed_at=runs[0]["refreshed_at"] if runs else None,
+        refreshed_at=max((r["finished_at"] for r in runs), default=None),
+        runs=tuple(runs),
     )
 
 

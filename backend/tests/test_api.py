@@ -201,3 +201,29 @@ def test_503_when_database_and_elexon_are_both_unavailable(monkeypatch: pytest.M
 
 def test_coverage_reports_database_as_source() -> None:
     assert client.get("/api/v1/coverage").json()["source"] == "database"
+
+
+def test_data_status_reports_coverage_runs_and_loads() -> None:
+    body = client.get("/api/v1/data").json()
+    assert body["source"] == "database"
+    assert (body["first_date"], body["last_date"]) == ("2026-01-15", "2026-01-16")  # complete days only
+    assert (body["actual_rows"], body["forecast_rows"], body["forecast_runs"]) == (98, 2, 2)
+    assert [(d["delivery_date"], d["actual_half_hours"], d["expected_half_hours"]) for d in body["days"]] == [
+        ("2026-01-15", 48, 48),
+        ("2026-01-16", 48, 48),
+        ("2026-01-17", 2, 48),  # partial day is listed, so the gap is visible
+    ]
+    assert body["days"][0]["forecast_runs"] == 0 and body["first_publish_time"] == "2026-01-14T07:30:00Z"
+    assert [r["dataset"] for r in body["runs"]] == ["FUELHH"]
+
+
+def test_data_status_on_empty_database(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    from app.config import get_settings
+    from app.data_store import get_data_store
+
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "fresh.db"))
+    for cache in (get_settings, get_default_database, get_data_store):
+        cache.cache_clear()
+    body = client.get("/api/v1/data").json()
+    assert body["days"] == [] and body["runs"] == [] and body["forecast_runs"] == 0
+    assert body["first_publish_time"] is None

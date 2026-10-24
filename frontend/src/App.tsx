@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { AccuracyPage } from './components/AccuracyPage'
+import { DataPage } from './components/DataPage'
 import { DayAheadPage } from './components/DayAheadPage'
 import { PageHeader } from './components/PageHeader'
 import { Sidebar } from './components/Sidebar'
@@ -15,6 +16,10 @@ const PAGES = {
     title: 'Forecast accuracy',
     subtitle: 'How far the day-ahead forecast was from actual output. Error is forecast minus actual.',
   },
+  data: {
+    title: 'Data',
+    subtitle: 'What is loaded, where it comes from, and how complete it is.',
+  },
 }
 
 function Workspace({ coverage }: { coverage: LoadedCoverage }) {
@@ -26,6 +31,7 @@ function Workspace({ coverage }: { coverage: LoadedCoverage }) {
       <main className="main">
         <PageHeader
           {...page}
+          showFilters={view !== 'data'}
           filters={filters}
           min={coverage.first_date}
           max={coverage.last_date}
@@ -33,11 +39,9 @@ function Workspace({ coverage }: { coverage: LoadedCoverage }) {
           onChange={setFilters}
           onReset={resetFilters}
         />
-        {view === 'accuracy' ? (
-          <AccuracyPage filters={filters} onOpenDay={openDay} />
-        ) : (
-          <DayAheadPage filters={filters} />
-        )}
+        {view === 'accuracy' && <AccuracyPage filters={filters} onOpenDay={openDay} />}
+        {view === 'data' && <DataPage />}
+        {view === 'day-ahead' && <DayAheadPage filters={filters} />}
       </main>
     </div>
   )

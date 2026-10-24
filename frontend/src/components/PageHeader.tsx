@@ -4,6 +4,7 @@ import { Filters } from './Filters'
 type Props = {
   title: string
   subtitle: string
+  showFilters?: boolean
   filters: FilterValues
   min: string
   max: string
@@ -12,14 +13,16 @@ type Props = {
   onReset: () => void
 }
 
-export function PageHeader({ title, subtitle, filters, min, max, isDefault, onChange, onReset }: Props) {
+export function PageHeader({ title, subtitle, showFilters = true, filters, min, max, isDefault, onChange, onReset }: Props) {
   return (
     <header className="page-header">
       <div>
         <h1>{title}</h1>
         <p className="subtitle">{subtitle}</p>
       </div>
-      <Filters {...filters} min={min} max={max} isDefault={isDefault} onChange={onChange} onReset={onReset} />
+      {showFilters && (
+        <Filters {...filters} min={min} max={max} isDefault={isDefault} onChange={onChange} onReset={onReset} />
+      )}
     </header>
   )
 }

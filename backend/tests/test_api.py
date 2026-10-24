@@ -122,3 +122,25 @@ def test_missing_d1_credentials_give_503_not_500(monkeypatch: pytest.MonkeyPatch
         res = client.get(path)
         assert res.status_code == 503
         assert res.json() == {"detail": "Database unavailable"}
+
+
+def test_metrics_scores_only_half_hours_with_both_values() -> None:
+    body = client.get("/api/v1/metrics", params={"start": "2026-01-15", "end": "2026-01-15"}).json()
+    summary = body["summary"]
+    # Forecasts exist only for 12:00 and 12:30 (4500 each) against actuals 5000 and 5100
+    assert (summary["half_hours"], summary["missing"]) == (2, 46)
+    assert summary["bias_mw"] == -550 and summary["mae_mw"] == 550
+    assert summary["over_forecast_share"] == 0
+    assert [d["delivery_date"] for d in body["worst_days"]] == ["2026-01-15"]
+    assert sum(b["count"] for b in body["histogram"]) == 2
+
+
+def test_metrics_cutoff_and_validation_match_series() -> None:
+    early = client.get("/api/v1/metrics", params={"start": "2026-01-15", "end": "2026-01-15", "cutoff": "09:20"})
+    assert early.json()["summary"]["bias_mw"] == -1050  # the 07:30 run (4000) is used for both half-hours
+    assert client.get("/api/v1/metrics", params={"start": "2026-01-16", "end": "2026-01-15"}).status_code == 422
+
+
+def test_metrics_without_scorable_data_has_null_summary() -> None:
+    body = client.get("/api/v1/metrics", params={"start": "2026-01-16", "end": "2026-01-16"}).json()
+    assert body["summary"] is None and body["histogram"] == [] and body["worst_days"] == []

@@ -1,14 +1,9 @@
-import { LineChart } from 'echarts/charts'
-import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components'
-import * as echarts from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { useEffect, useRef } from 'react'
+import { useMemo } from 'react'
 import type { SeriesPoint } from '../lib/api'
 import { formatMw } from '../lib/stats'
 import { theme } from '../lib/theme'
 import { formatUkAxisLabel, formatUkDateTime } from '../lib/ukTime'
-
-echarts.use([LineChart, GridComponent, TooltipComponent, DataZoomComponent, CanvasRenderer])
+import { EChart, type ChartOption } from './EChart'
 
 const HALF_HOURS_PER_DAY = 48
 
@@ -29,7 +24,7 @@ function tooltip(point: SeriesPoint): string {
   ].join('')
 }
 
-function buildOption(points: SeriesPoint[]): echarts.EChartsCoreOption {
+function buildOption(points: SeriesPoint[]): ChartOption {
   const x = points.map((p) => Date.parse(p.start_time))
   const zoomable = points.length > 3 * HALF_HOURS_PER_DAY
   return {
@@ -105,25 +100,6 @@ function buildOption(points: SeriesPoint[]): echarts.EChartsCoreOption {
 }
 
 export function SeriesChart({ points, label }: { points: SeriesPoint[]; label: string }) {
-  const container = useRef<HTMLDivElement>(null)
-  const chart = useRef<echarts.ECharts | null>(null)
-
-  useEffect(() => {
-    if (!container.current) return
-    const instance = echarts.init(container.current)
-    chart.current = instance
-    const observer = new ResizeObserver(() => instance.resize())
-    observer.observe(container.current)
-    return () => {
-      observer.disconnect()
-      instance.dispose()
-      chart.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    chart.current?.setOption(buildOption(points), true)
-  }, [points])
-
-  return <div ref={container} className="chart" role="img" aria-label={label} />
+  const option = useMemo(() => buildOption(points), [points])
+  return <EChart option={option} label={label} />
 }

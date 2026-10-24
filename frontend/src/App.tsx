@@ -1,14 +1,58 @@
 import { useQuery } from '@tanstack/react-query'
+import { AccuracyPage } from './components/AccuracyPage'
 import { DayAheadPage } from './components/DayAheadPage'
+import { PageHeader } from './components/PageHeader'
 import { Sidebar } from './components/Sidebar'
 import { fetchCoverage } from './lib/api'
+import { type LoadedCoverage, useFilters } from './lib/useFilters'
+
+const PAGES = {
+  'day-ahead': {
+    title: 'Day-ahead wind',
+    subtitle: 'GB national wind generation against the forecast available at the decision cutoff. All times UK.',
+  },
+  accuracy: {
+    title: 'Forecast accuracy',
+    subtitle: 'How far the day-ahead forecast was from actual output. Error is forecast minus actual.',
+  },
+}
+
+function Workspace({ coverage }: { coverage: LoadedCoverage }) {
+  const { view, filters, isDefault, setFilters, resetFilters, setView } = useFilters(coverage)
+  const page = PAGES[view]
+  return (
+    <div className="layout">
+      <Sidebar coverage={coverage} view={view} onNavigate={setView} />
+      <main className="main">
+        <PageHeader
+          {...page}
+          filters={filters}
+          min={coverage.first_date}
+          max={coverage.last_date}
+          isDefault={isDefault}
+          onChange={setFilters}
+          onReset={resetFilters}
+        />
+        {view === 'accuracy' ? (
+          <AccuracyPage filters={filters} onOpenDay={(day) => setFilters({ view: '', start: day, end: day })} />
+        ) : (
+          <DayAheadPage filters={filters} />
+        )}
+      </main>
+    </div>
+  )
+}
 
 function App() {
   const coverage = useQuery({ queryKey: ['coverage'], queryFn: fetchCoverage, staleTime: 5 * 60 * 1000 })
+  const data = coverage.data
 
+  if (data?.first_date && data.last_date) {
+    return <Workspace coverage={{ ...data, first_date: data.first_date, last_date: data.last_date }} />
+  }
   return (
     <div className="layout">
-      <Sidebar coverage={coverage.data} />
+      <Sidebar coverage={data} />
       <main className="main">
         {coverage.isPending && <div className="card notice">Loading…</div>}
         {coverage.isError && (
@@ -19,13 +63,8 @@ function App() {
             </button>
           </section>
         )}
-        {coverage.data && !coverage.data.first_date && (
+        {data && !data.first_date && (
           <section className="card notice">No data loaded yet. Run the ingest refresh command first.</section>
-        )}
-        {coverage.data?.first_date && coverage.data.last_date && (
-          <DayAheadPage
-            coverage={{ ...coverage.data, first_date: coverage.data.first_date, last_date: coverage.data.last_date }}
-          />
         )}
       </main>
     </div>

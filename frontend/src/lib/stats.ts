@@ -27,3 +27,10 @@ export function summarise(points: SeriesPoint[]): Summary {
 const mwFormatter = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 })
 
 export const formatMw = (value: number | null) => (value === null ? '–' : `${mwFormatter.format(value)} MW`)
+
+/** "+1,809 MW" / "−499 MW": signed, for errors */
+export const formatSignedMw = (value: number | null) =>
+  value === null ? '–' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${mwFormatter.format(Math.abs(value))} MW`
+
+/** "4.3k" for axis labels */
+export const formatK = (value: number) => `${Math.round(value / 100) / 10}k`.replace('-', '−')

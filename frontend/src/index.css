@@ -475,3 +475,113 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Navigation buttons look like the links they replace */
+button.nav-item {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.nav-item:hover:not(.is-active) {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Accuracy page */
+
+.insight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--lime-soft);
+  border-color: transparent;
+}
+
+.insight p {
+  max-width: 80ch;
+}
+
+.insight-note {
+  color: #55611b;
+  font-size: 13.5px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart.is-compact {
+  height: 300px;
+}
+
+.swatch.is-actual-soft {
+  background: rgba(124, 207, 174, 0.9);
+}
+
+.table-wrap {
+  position: relative; /* keeps absolutely placed screen-reader text inside the scroll box */
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th {
+  padding: 10px 14px;
+  background: var(--mint);
+  color: #3f5b50;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.table th:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cell-action {
+  text-align: right;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.badge.is-over {
+  background: var(--lime);
+  color: #3d4a0c;
+}
+
+.badge.is-under {
+  background: var(--mint);
+  color: #2f5a49;
+}
+
+@media (max-width: 1100px) {
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

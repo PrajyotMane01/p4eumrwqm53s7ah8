@@ -46,3 +46,33 @@ async function getJson<T>(path: string, params?: Record<string, string>): Promis
 export const fetchCoverage = () => getJson<Coverage>('/api/v1/coverage')
 
 export const fetchSeries = (query: SeriesQuery) => getJson<Series>('/api/v1/series', query)
+
+export type AccuracySummary = {
+  half_hours: number
+  missing: number
+  mean_actual_mw: number
+  mean_forecast_mw: number
+  bias_mw: number
+  mae_mw: number
+  rmse_mw: number
+  mae_pct: number
+  p10_mw: number
+  p50_mw: number
+  p90_mw: number
+  over_forecast_share: number
+}
+
+export type GroupStats = { half_hours: number; bias_mw: number; mae_mw: number }
+
+export type Metrics = {
+  start: string
+  end: string
+  cutoff: string
+  summary: AccuracySummary | null
+  histogram: { from_mw: number; to_mw: number; count: number }[]
+  by_hour: (GroupStats & { hour: number })[]
+  by_forecast_level: (GroupStats & { from_mw: number; to_mw: number | null })[]
+  worst_days: (GroupStats & { delivery_date: string; max_abs_error_mw: number })[]
+}
+
+export const fetchMetrics = (query: SeriesQuery) => getJson<Metrics>('/api/v1/metrics', query)

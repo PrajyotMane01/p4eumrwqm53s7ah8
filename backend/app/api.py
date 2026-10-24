@@ -4,10 +4,11 @@ from typing import Annotated
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.analysis import metrics
 from app.analysis.selection import DEFAULT_CUTOFF, UK, half_hours, select_day_ahead
 from app.data_store import Snapshot, get_data_store
 from app.db import DatabaseError
-from app.schemas import Coverage, Series, SeriesPoint
+from app.schemas import AccuracySummary, Coverage, Metrics, Series, SeriesPoint
 
 MAX_RANGE_DAYS = 62
 
@@ -39,26 +40,39 @@ async def coverage(snap: Annotated[Snapshot, Depends(snapshot)]) -> Coverage:
     return Coverage(first_date=first, last_date=last, refreshed_at=snap.refreshed_at, default_cutoff=DEFAULT_CUTOFF)
 
 
-@router.get("/series", response_model=Series)
-async def series(
-    snap: Annotated[Snapshot, Depends(snapshot)],
-    start: Annotated[date | None, Query(description="First UK delivery day (inclusive)")] = None,
-    end: Annotated[date | None, Query(description="Last UK delivery day (inclusive)")] = None,
-    cutoff: Annotated[time, Query(description="Decision cutoff, UK time on the day before delivery")] = DEFAULT_CUTOFF,
-) -> Series:
-    """Actual wind generation and the day-ahead forecast available at the cutoff, per half-hour."""
+StartQuery = Annotated[date | None, Query(description="First UK delivery day (inclusive)")]
+EndQuery = Annotated[date | None, Query(description="Last UK delivery day (inclusive)")]
+CutoffQuery = Annotated[time, Query(description="Decision cutoff, UK time on the day before delivery")]
+
+
+def _range(snap: Snapshot, start: date | None, end: date | None) -> tuple[date, date] | None:
+    """Fill in a missing start or end from the stored data and check the range. None if no data."""
     first, last = _delivery_dates(snap)
     end = end or last
     if start is None and end is not None:
         # Default to as much of the stored range as one request allows
         start = max(first or end, end - timedelta(days=MAX_RANGE_DAYS - 1))
     if start is None or end is None:
-        return Series(start=date.today(), end=date.today(), cutoff=cutoff, points=[])
+        return None
     if start > end:
         raise HTTPException(status_code=422, detail="start must be on or before end")
     if (end - start).days + 1 > MAX_RANGE_DAYS:
         raise HTTPException(status_code=422, detail=f"range is limited to {MAX_RANGE_DAYS} days")
+    return start, end
 
+
+@router.get("/series", response_model=Series)
+async def series(
+    snap: Annotated[Snapshot, Depends(snapshot)],
+    start: StartQuery = None,
+    end: EndQuery = None,
+    cutoff: CutoffQuery = DEFAULT_CUTOFF,
+) -> Series:
+    """Actual wind generation and the day-ahead forecast available at the cutoff, per half-hour."""
+    window = _range(snap, start, end)
+    if window is None:
+        return Series(start=date.today(), end=date.today(), cutoff=cutoff, points=[])
+    start, end = window
     rows = select_day_ahead(snap.actuals, snap.forecasts, start, end + timedelta(days=1), cutoff)
     points = [
         SeriesPoint(
@@ -71,3 +85,45 @@ async def series(
         for row in rows.itertuples(index=False)
     ]
     return Series(start=start, end=end, cutoff=cutoff, points=points)
+
+
+@router.get("/metrics", response_model=Metrics)
+async def accuracy(
+    snap: Annotated[Snapshot, Depends(snapshot)],
+    start: StartQuery = None,
+    end: EndQuery = None,
+    cutoff: CutoffQuery = DEFAULT_CUTOFF,
+) -> Metrics:
+    """How accurate the day-ahead forecast was over the range. Error is forecast minus actual."""
+    window = _range(snap, start, end)
+    if window is None:
+        return Metrics(
+            start=date.today(),
+            end=date.today(),
+            cutoff=cutoff,
+            summary=None,
+            histogram=[],
+            by_hour=[],
+            by_forecast_level=[],
+            worst_days=[],
+        )
+    start, end = window
+    rows = select_day_ahead(snap.actuals, snap.forecasts, start, end + timedelta(days=1), cutoff)
+    summary = metrics.summarise(rows)
+    return Metrics(
+        start=start,
+        end=end,
+        cutoff=cutoff,
+        summary=None
+        if summary is None
+        else AccuracySummary(
+            **{k: v for k, v in vars(summary).items() if k != "percentiles_mw"},
+            p10_mw=summary.percentiles_mw[10],
+            p50_mw=summary.percentiles_mw[50],
+            p90_mw=summary.percentiles_mw[90],
+        ),
+        histogram=metrics.histogram(rows),
+        by_hour=metrics.by_hour(rows),
+        by_forecast_level=metrics.by_forecast_level(rows),
+        worst_days=metrics.worst_days(rows),
+    )

@@ -6,6 +6,11 @@ services:
         required: false
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+      # Wrangler login for D1_AUTH=wrangler (development only). The container cannot renew it,
+      # so run any wrangler command on the host if it expires.
+      - ${HOME}/.config/.wrangler/config:/root/.config/.wrangler/config:ro
 
   frontend:
     build: ./frontend

@@ -146,8 +146,12 @@ def test_metrics_without_scorable_data_has_null_summary() -> None:
     assert body["summary"] is None and body["histogram"] == [] and body["worst_days"] == []
 
 
-def _break_database_and_mock_elexon(monkeypatch: pytest.MonkeyPatch, elexon_status: int = 200) -> list[str]:
-    """Make the database unreadable and route Elexon calls to a fake. Returns the requested paths."""
+def _break_database_and_mock_elexon(
+    monkeypatch: pytest.MonkeyPatch, elexon_status: int = 200, empty_database_path: str | None = None
+) -> list[str]:
+    """Make the database unreadable (or, with a path, empty) and route Elexon calls to a fake.
+
+    Returns the requested paths."""
     import httpx
 
     from app import data_store
@@ -171,9 +175,12 @@ def _break_database_and_mock_elexon(monkeypatch: pytest.MonkeyPatch, elexon_stat
         "elexon_client",
         lambda: httpx.AsyncClient(base_url="https://test", transport=httpx.MockTransport(fake_elexon)),
     )
-    monkeypatch.setenv("DB_BACKEND", "d1")
-    monkeypatch.setenv("D1_AUTH", "token")
-    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "")  # the database cannot be reached
+    if empty_database_path:
+        monkeypatch.setenv("SQLITE_PATH", empty_database_path)  # readable, but no rows
+    else:
+        monkeypatch.setenv("DB_BACKEND", "d1")
+        monkeypatch.setenv("D1_AUTH", "token")
+        monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "")  # the database cannot be reached
     monkeypatch.setenv("ELEXON_FALLBACK", "true")
     for cache in (get_settings, get_default_database, get_data_store):
         cache.cache_clear()
@@ -228,3 +235,17 @@ def test_data_status_on_empty_database(monkeypatch: pytest.MonkeyPatch, tmp_path
     body = client.get("/api/v1/data").json()
     assert body["days"] == [] and body["runs"] == [] and body["forecast_runs"] == 0
     assert body["first_publish_time"] is None
+
+
+def test_falls_back_to_live_elexon_when_database_is_empty(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _break_database_and_mock_elexon(monkeypatch, empty_database_path=str(tmp_path / "empty.db"))
+    assert client.get("/api/v1/coverage").json()["source"] == "elexon"
+    series = client.get("/api/v1/series", params={"start": "2026-01-15", "end": "2026-01-15"}).json()
+    assert series["points"][0]["actual_mw"] == 7000.0  # served from the fake Elexon
+
+
+def test_empty_database_and_no_elexon_reads_as_empty_not_503(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _break_database_and_mock_elexon(monkeypatch, elexon_status=503, empty_database_path=str(tmp_path / "empty.db"))
+    res = client.get("/api/v1/coverage")
+    assert res.status_code == 200
+    assert (res.json()["source"], res.json()["first_date"]) == ("database", None)

@@ -3,9 +3,10 @@
 The January data is fixed, and every D1 query is a network round trip, so the API
 loads both tables once and keeps them for TTL. A refresh shows up after the TTL.
 
-If the database cannot be read (expired token, outage, missing credentials), the
-default window is fetched straight from Elexon instead, with the same parsing the
-loader uses. The database is tried again when that copy expires.
+If the database cannot be read (expired token, outage, missing credentials) or holds
+no data yet (a first start before the loader has run), the default window is fetched
+straight from Elexon instead, with the same parsing the loader uses. The database is
+tried again when that copy expires.
 """
 
 import asyncio
@@ -107,17 +108,28 @@ class DataStore:
         self._lock = asyncio.Lock()
 
     async def _load(self) -> Snapshot:
+        fallback = get_settings().elexon_fallback
         try:
             # The database is looked up here, so missing credentials count as a database problem
-            return await load_snapshot(get_default_database())
+            stored = await load_snapshot(get_default_database())
         except DatabaseError as exc:
-            if not get_settings().elexon_fallback:
+            if not fallback:
                 raise DataUnavailableError(str(exc)) from exc
             log.warning("Database unavailable (%s); fetching live from Elexon", exc)
+            try:
+                return await load_live_snapshot()
+            except ElexonError as live_exc:
+                raise DataUnavailableError(f"Database and Elexon both unavailable: {live_exc}") from live_exc
+
+        if not stored.actuals.empty or not fallback:
+            return stored
+        log.warning("Database has no data yet; fetching live from Elexon")
         try:
             return await load_live_snapshot()
         except ElexonError as exc:
-            raise DataUnavailableError(f"Database and Elexon both unavailable: {exc}") from exc
+            # The database works, so show it as empty rather than failing
+            log.warning("Elexon unavailable too (%s); serving the empty database", exc)
+            return stored
 
     async def get(self) -> Snapshot:
         # One load at a time: concurrent requests wait for the same result

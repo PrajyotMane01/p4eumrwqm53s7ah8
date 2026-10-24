@@ -58,7 +58,7 @@ flowchart LR
 
 - **Backend:** FastAPI (Python 3.12, async) with pandas and NumPy. The selection rule uses `pandas.merge_asof` to pick the latest run published at or before each cutoff.
 - **Database:** Cloudflare D1 in production, or a local SQLite file. D1 is SQLite, so both use the same schema and SQL. Python talks to D1 over its HTTP API, with inserts batched under D1's 100-parameter limit.
-- **Fallback:** if the database cannot be read (an expired token, an outage, missing credentials), the API fetches the January window straight from Elexon with the same loader code, about 9 seconds on first request and cached after that. `/coverage` reports `source: "elexon"`, and the sidebar status changes from "Database · Cloudflare D1" to "Live Elexon API". Only if Elexon is also unavailable does the API return 503. Turn it off with `ELEXON_FALLBACK=false`.
+- **Fallback:** if the database cannot be read (an expired token, an outage, missing credentials) or is still empty (a first start before the loader has run), the API fetches the January window straight from Elexon with the same loader code, about 9 seconds on first request and cached after that. `/coverage` reports `source: "elexon"`, and the sidebar status changes from "Database · Cloudflare D1" to "Live Elexon API". Only if Elexon is also unavailable does the API return 503. Turn it off with `ELEXON_FALLBACK=false`.
 - **Frontend:** React 19 + TypeScript (Vite), TanStack Query for data fetching and ECharts for charts. Filters are validated, clamped and normalised when read from the URL.
 - **Deployment:** Vercel, with two [Services](https://vercel.com/docs/services) in one project: the Vite static site, and FastAPI as a Python function under `/api`.
 

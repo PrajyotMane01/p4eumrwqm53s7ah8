@@ -33,5 +33,16 @@ const dateFormatter = new Intl.DateTimeFormat('en-GB', {
 
 export const formatUkDateTime = (iso: string) => dateTimeFormatter.format(new Date(iso))
 
+const weekdayFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+/** "2026-01-15" -> "Thu 15 Jan 2026" */
+export const formatDayLong = (isoDate: string) => weekdayFormatter.format(new Date(`${isoDate}T00:00:00Z`))
+
 /** "2026-01-15" -> "15 Jan 2026" */
 export const formatDate = (isoDate: string) => dateFormatter.format(new Date(`${isoDate}T00:00:00Z`))

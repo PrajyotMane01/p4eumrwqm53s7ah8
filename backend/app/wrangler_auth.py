@@ -14,6 +14,8 @@ from pathlib import Path
 
 CONFIG_FILE = Path.home() / ".config" / ".wrangler" / "config" / "default.toml"
 RENEW_BEFORE = timedelta(minutes=5)
+# A token with less than this left is treated as expired
+MIN_VALIDITY = timedelta(seconds=30)
 WRANGLER_CMD = ["npx", "-y", "wrangler@4", "whoami"]
 
 log = logging.getLogger(__name__)
@@ -38,8 +40,11 @@ class WranglerToken:
         except (OSError, KeyError, ValueError) as exc:
             raise WranglerAuthError(f"Cannot read Wrangler login from {self._config_file}: {exc}") from exc
 
+    def _valid_for_more_than(self, margin: timedelta) -> bool:
+        return bool(self._token) and self._expires - datetime.now(UTC) > margin
+
     def _fresh(self) -> bool:
-        return bool(self._token) and self._expires - datetime.now(UTC) > RENEW_BEFORE
+        return self._valid_for_more_than(RENEW_BEFORE)
 
     def get(self) -> str:
         with self._lock:
@@ -59,6 +64,8 @@ class WranglerToken:
             except (OSError, subprocess.SubprocessError) as exc:
                 raise WranglerAuthError(f"Could not renew the Wrangler login: {exc}") from exc
             self._read()
-            if not self._fresh():
+            # Wrangler only renews a token once it has expired, so a token close to expiry may come
+            # back unchanged; it is still usable until it actually expires
+            if not self._valid_for_more_than(MIN_VALIDITY):
                 raise WranglerAuthError("Wrangler login is expired; run `npx wrangler login`")
             return self._token

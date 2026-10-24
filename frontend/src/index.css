@@ -720,3 +720,109 @@ button.nav-item:hover:not(.is-active) {
     padding: 8px 12px;
   }
 }
+
+/* Filter bar: day or range, day stepper, presets */
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.segmented button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.segmented button.is-on {
+  background: var(--lime);
+  color: var(--text);
+}
+
+.day-stepper {
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.step:hover:not(:disabled) {
+  background: #fff;
+}
+
+.step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.day-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* The native date input sits invisibly over the label, so a click opens the picker */
+.day-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--bg);
+}
+
+.chip.is-on {
+  border-color: var(--lime-strong);
+  background: var(--lime-soft);
+}
+
+.step:focus-visible,
+.chip:focus-visible,
+.segmented button:focus-visible {
+  outline: 2px solid var(--lime-strong);
+  outline-offset: 2px;
+}
+
+.day-label:focus-within {
+  outline: 2px solid var(--lime-strong);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

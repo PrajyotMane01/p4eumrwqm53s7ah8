@@ -1,12 +1,20 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { CircleCheck, LineChart, Wind, Zap } from 'lucide-react'
-import { fetchSeries } from '../lib/api'
+import { fetchSeries, type SeriesPoint } from '../lib/api'
 import type { Filters } from '../lib/filters'
 import { formatMw, summarise } from '../lib/stats'
 import { formatDate, formatUkDateTime } from '../lib/ukTime'
 import { ErrorNotice } from './ErrorNotice'
 import { SeriesChart } from './SeriesChart'
 import { StatCard } from './StatCard'
+
+/** Which forecast run the cutoff selects: named for a single run, described for several. */
+function runNote(points: SeriesPoint[], cutoff: string): string {
+  const runs = [...new Set(points.map((p) => p.publish_time).filter((t): t is string => t !== null))]
+  if (runs.length === 1) return `using the forecast published ${formatUkDateTime(runs[0])} UK (latest by ${cutoff} on D-1)`
+  if (runs.length === 0) return `no forecast was published by ${cutoff} UK on D-1`
+  return `each day uses the latest forecast published by ${cutoff} UK the day before`
+}
 
 export function DayAheadPage({ filters }: { filters: Filters }) {
   const series = useQuery({
@@ -45,8 +53,10 @@ export function DayAheadPage({ filters }: { filters: Filters }) {
           <div>
             <h2>Actual vs day-ahead forecast</h2>
             <p className="card-sub">
-              {formatDate(filters.start)} – {formatDate(filters.end)} · forecast as published by {filters.cutoff} UK
-              the day before
+              {filters.start === filters.end
+                ? formatDate(filters.start)
+                : `${formatDate(filters.start)} – ${formatDate(filters.end)}`}{' '}
+              · {runNote(points, filters.cutoff)}
             </p>
           </div>
           <ul className="legend" aria-label="Legend">

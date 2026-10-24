@@ -54,3 +54,10 @@ def test_explains_how_to_renew_when_npx_is_missing(tmp_path, monkeypatch: pytest
     monkeypatch.setattr(subprocess, "run", no_npx)
     with pytest.raises(WranglerAuthError, match="on the host"):
         WranglerToken(config).get()
+
+
+def test_keeps_using_a_valid_token_when_wrangler_does_not_renew_it(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "default.toml"
+    write_config(config, "still-valid", timedelta(minutes=3))  # inside the renewal window
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)  # wrangler leaves it unchanged
+    assert WranglerToken(config).get() == "still-valid"

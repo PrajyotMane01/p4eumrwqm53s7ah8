@@ -33,6 +33,7 @@ function Workspace({ coverage }: { coverage: LoadedCoverage }) {
           {...page}
           showFilters={view !== 'data'}
           filters={filters}
+          defaultCutoff={coverage.default_cutoff.slice(0, 5)}
           min={coverage.first_date}
           max={coverage.last_date}
           isDefault={isDefault}

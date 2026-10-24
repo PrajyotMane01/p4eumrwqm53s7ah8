@@ -30,7 +30,7 @@ export function parseCutoff(value: string | null): string | null {
   return `${hh}:${mm}`
 }
 
-const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
+export const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
 
 // ISO dates compare correctly as strings
 const clamp = (date: string, lo: string, hi: string) => (date < lo ? lo : date > hi ? hi : date)

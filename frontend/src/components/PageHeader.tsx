@@ -6,6 +6,7 @@ type Props = {
   subtitle: string
   showFilters?: boolean
   filters: FilterValues
+  defaultCutoff: string
   min: string
   max: string
   isDefault: boolean
@@ -13,7 +14,18 @@ type Props = {
   onReset: () => void
 }
 
-export function PageHeader({ title, subtitle, showFilters = true, filters, min, max, isDefault, onChange, onReset }: Props) {
+export function PageHeader({
+  title,
+  subtitle,
+  showFilters = true,
+  filters,
+  defaultCutoff,
+  min,
+  max,
+  isDefault,
+  onChange,
+  onReset,
+}: Props) {
   return (
     <header className="page-header">
       <div>
@@ -21,7 +33,15 @@ export function PageHeader({ title, subtitle, showFilters = true, filters, min, 
         <p className="subtitle">{subtitle}</p>
       </div>
       {showFilters && (
-        <Filters {...filters} min={min} max={max} isDefault={isDefault} onChange={onChange} onReset={onReset} />
+        <Filters
+          {...filters}
+          defaultCutoff={defaultCutoff}
+          min={min}
+          max={max}
+          isDefault={isDefault}
+          onChange={onChange}
+          onReset={onReset}
+        />
       )}
     </header>
   )

@@ -58,10 +58,12 @@ function buildOption(points: SeriesPoint[]): ChartOption {
         return tooltip(points[first.dataIndex])
       },
     },
-    dataZoom: zoomable
-      ? [
-          { type: 'inside', filterMode: 'none' },
-          {
+    // Scroll or pinch to zoom at any range; the slider only once the range is long
+    dataZoom: [
+      { type: 'inside', filterMode: 'none' },
+      ...(zoomable
+        ? [
+            {
             type: 'slider',
             height: 22,
             bottom: 12,
@@ -71,10 +73,11 @@ function buildOption(points: SeriesPoint[]): ChartOption {
             moveHandleStyle: { color: theme.grid },
             emphasis: { moveHandleStyle: { color: theme.forecast } },
             showDetail: false,
-            dataBackground: { lineStyle: { color: theme.actual }, areaStyle: { color: theme.actualFill } },
-          },
-        ]
-      : [],
+              dataBackground: { lineStyle: { color: theme.actual }, areaStyle: { color: theme.actualFill } },
+            },
+          ]
+        : []),
+    ],
     series: [
       {
         name: 'Actual',

@@ -12,6 +12,7 @@ UK national wind generation: day-ahead forecasts vs actuals (Elexon BMRS), for p
 | `backend/app/db.py` | Database layer: local SQLite or Cloudflare D1 (same SQL) |
 | `backend/app/ingest/` | Loads wind actuals (FUELHH) and forecasts (WINDFOR) from Elexon into the database |
 | `backend/migrations/` | SQL schema, applied automatically by the loader |
+| `backend/app/analysis/selection.py` | Picks the forecast available at the day-ahead decision cutoff (default 09:50 UK time on D-1) for each half-hour |
 | `backend/app/wrangler_auth.py` | Local-only: reuse the Wrangler login to reach D1 |
 | `backend/tests/` | pytest tests |
 | `frontend/` | React + TypeScript app (Vite) |

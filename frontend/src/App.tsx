@@ -1,35 +1,34 @@
-import { useEffect, useState } from 'react'
-
-type Health = {
-  status: string
-  db: string
-}
+import { useQuery } from '@tanstack/react-query'
+import { DayAheadPage } from './components/DayAheadPage'
+import { Sidebar } from './components/Sidebar'
+import { fetchCoverage } from './lib/api'
 
 function App() {
-  const [health, setHealth] = useState<Health | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<Health>
-      })
-      .then(setHealth)
-      .catch((err: Error) => setError(err.message))
-  }, [])
+  const coverage = useQuery({ queryKey: ['coverage'], queryFn: fetchCoverage, staleTime: 5 * 60 * 1000 })
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: 16 }}>
-      <h1>Wind Forecast Monitor</h1>
-      {error && <p>Backend unreachable: {error}</p>}
-      {!error && !health && <p>Checking backend…</p>}
-      {health && (
-        <p>
-          API: {health.status} · Database: {health.db}
-        </p>
-      )}
-    </main>
+    <div className="layout">
+      <Sidebar coverage={coverage.data} />
+      <main className="main">
+        {coverage.isPending && <div className="card notice">Loading…</div>}
+        {coverage.isError && (
+          <section className="card notice is-error" role="alert">
+            <p>Backend unreachable: {coverage.error.message}</p>
+            <button type="button" className="ghost-button" onClick={() => coverage.refetch()}>
+              Try again
+            </button>
+          </section>
+        )}
+        {coverage.data && !coverage.data.first_date && (
+          <section className="card notice">No data loaded yet. Run the ingest refresh command first.</section>
+        )}
+        {coverage.data?.first_date && coverage.data.last_date && (
+          <DayAheadPage
+            coverage={{ ...coverage.data, first_date: coverage.data.first_date, last_date: coverage.data.last_date }}
+          />
+        )}
+      </main>
+    </div>
   )
 }
 

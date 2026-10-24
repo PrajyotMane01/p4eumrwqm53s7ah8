@@ -3,6 +3,7 @@ from collections.abc import Iterator
 import pytest
 
 from app.config import get_settings
+from app.data_store import get_data_store
 from app.db import get_default_database
 from app.ingest import elexon
 
@@ -13,8 +14,9 @@ def isolated_settings(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Iterator[Non
     monkeypatch.setenv("DB_BACKEND", "sqlite")
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setattr(elexon, "RETRY_DELAY", 0)
-    get_settings.cache_clear()
-    get_default_database.cache_clear()
+    caches = (get_settings, get_default_database, get_data_store)
+    for cache in caches:
+        cache.cache_clear()
     yield
-    get_settings.cache_clear()
-    get_default_database.cache_clear()
+    for cache in caches:
+        cache.cache_clear()

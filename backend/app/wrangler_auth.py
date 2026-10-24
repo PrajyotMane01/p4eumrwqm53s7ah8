@@ -51,6 +51,11 @@ class WranglerToken:
             log.info("Wrangler token expires soon, renewing it")
             try:
                 subprocess.run(WRANGLER_CMD, capture_output=True, check=True, timeout=120)
+            except FileNotFoundError as exc:
+                # No npx here, e.g. inside Docker: the login can only be renewed on the host
+                raise WranglerAuthError(
+                    "Wrangler login expired and cannot be renewed here; run `npx wrangler whoami` on the host"
+                ) from exc
             except (OSError, subprocess.SubprocessError) as exc:
                 raise WranglerAuthError(f"Could not renew the Wrangler login: {exc}") from exc
             self._read()

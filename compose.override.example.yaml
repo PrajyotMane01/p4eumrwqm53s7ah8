@@ -1,0 +1,8 @@
+# Local-only additions. Copy to compose.override.yaml (git-ignored); Docker Compose loads it
+# automatically alongside compose.yaml.
+services:
+  backend:
+    volumes:
+      # Wrangler login for D1_AUTH=wrangler. The container cannot renew it, so run any
+      # wrangler command on the host if it expires.
+      - ${HOME}/.config/.wrangler/config:/root/.config/.wrangler/config:ro

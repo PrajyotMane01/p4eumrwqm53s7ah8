@@ -7,10 +7,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/data:/app/data
-      # Wrangler login for D1_AUTH=wrangler (development only). The container cannot renew it,
-      # so run any wrangler command on the host if it expires.
-      - ${HOME}/.config/.wrangler/config:/root/.config/.wrangler/config:ro
+      # Named volume: the container's database stays separate from a local backend/data
+      - backend-data:/app/data
 
   frontend:
     build: ./frontend
@@ -18,3 +16,6 @@ services:
       - backend
     ports:
       - "8080:80"
+
+volumes:
+  backend-data:

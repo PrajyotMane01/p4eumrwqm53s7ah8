@@ -42,3 +42,15 @@ def test_reports_expired_login(tmp_path, monkeypatch: pytest.MonkeyPatch) -> Non
 def test_reports_missing_config(tmp_path) -> None:
     with pytest.raises(WranglerAuthError, match="Cannot read"):
         WranglerToken(tmp_path / "missing.toml").get()
+
+
+def test_explains_how_to_renew_when_npx_is_missing(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "default.toml"
+    write_config(config, "old", timedelta(hours=-1))
+
+    def no_npx(*args, **kwargs):
+        raise FileNotFoundError("npx")
+
+    monkeypatch.setattr(subprocess, "run", no_npx)
+    with pytest.raises(WranglerAuthError, match="on the host"):
+        WranglerToken(config).get()

@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, time
 import pandas as pd
 import pytest
 
-from app.analysis.selection import cutoff_for, half_hours, select_day_ahead
+from app.analysis.selection import cutoff_for, half_hours, select_day_ahead, uk_day_bounds
 
 DAY = date(2026, 1, 15)  # GMT: UK time equals UTC
 
@@ -120,3 +120,9 @@ def test_empty_inputs_give_full_grid_of_gaps() -> None:
     result = select_day_ahead(actuals(), forecasts(), DAY, date(2026, 1, 17))
     assert len(result) == 96
     assert result["forecast_mw"].isna().all() and result["actual_mw"].isna().all()
+
+
+def test_uk_day_bounds_follow_uk_midnight() -> None:
+    assert uk_day_bounds(date(2026, 1, 1), date(2026, 1, 2)) == (utc("2026-01-01T00:00"), utc("2026-01-02T00:00"))
+    # Summer: UK midnight is 23:00 UTC the day before
+    assert uk_day_bounds(date(2026, 7, 1), date(2026, 7, 2)) == (utc("2026-06-30T23:00"), utc("2026-07-01T23:00"))

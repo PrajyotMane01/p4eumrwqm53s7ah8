@@ -33,6 +33,14 @@ def cutoff_for(delivery_date: date, cutoff: time = DEFAULT_CUTOFF) -> datetime:
     return datetime.combine(delivery_date - timedelta(days=1), cutoff, tzinfo=UK).astimezone(UTC)
 
 
+def uk_day_bounds(start: date, end: date) -> tuple[datetime, datetime]:
+    """UTC instants spanning UK delivery days start..end-1: from UK midnight to UK midnight."""
+    return (
+        datetime.combine(start, time(0), tzinfo=UK).astimezone(UTC),
+        datetime.combine(end, time(0), tzinfo=UK).astimezone(UTC),
+    )
+
+
 def _utc(values: pd.Series) -> pd.Series:
     # One resolution on both sides, as merge_asof requires matching dtypes
     return pd.to_datetime(values, utc=True).dt.as_unit("ns")
@@ -40,8 +48,7 @@ def _utc(values: pd.Series) -> pd.Series:
 
 def half_hours(start: date, end: date) -> pd.DatetimeIndex:
     """Every half-hour of UK delivery days start..end-1, in UTC. DST days have 46 or 50."""
-    first = datetime.combine(start, time(0), tzinfo=UK).astimezone(UTC)
-    last = datetime.combine(end, time(0), tzinfo=UK).astimezone(UTC)
+    first, last = uk_day_bounds(start, end)
     return pd.date_range(first, last, freq="30min", inclusive="left").as_unit("ns")
 
 

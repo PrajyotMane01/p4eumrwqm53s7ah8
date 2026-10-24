@@ -1,16 +1,19 @@
 """Command line entry point.
 
 python -m app.ingest migrate
-python -m app.ingest refresh [--start 2026-01-01] [--end 2026-02-02]
+python -m app.ingest refresh [--start 2026-01-01] [--end 2026-02-02] [--if-empty]
+
+Dates are UK delivery days, the same days the app shows.
 """
 
 import argparse
 import asyncio
 import logging
-from datetime import UTC, date, datetime
+from datetime import date
 
 import httpx
 
+from app.analysis.selection import uk_day_bounds
 from app.config import get_settings
 from app.db import get_database
 from app.ingest.refresh import refresh
@@ -23,10 +26,6 @@ DEFAULT_END = date(2026, 2, 2)
 log = logging.getLogger("ingest")
 
 
-def _utc_midnight(day: date) -> datetime:
-    return datetime(day.year, day.month, day.day, tzinfo=UTC)
-
-
 async def _main(args: argparse.Namespace) -> None:
     settings = get_settings()
     db = get_database(settings)
@@ -35,10 +34,15 @@ async def _main(args: argparse.Namespace) -> None:
         log.info("Migrations applied")
         return
 
-    start, end = _utc_midnight(args.start), _utc_midnight(args.end)
-    if start >= end:
+    if args.start >= args.end:
         raise SystemExit("--start must be before --end")
-    log.info("Refreshing target times %s to %s (end exclusive)", start.date(), end.date())
+    if args.if_empty:
+        await migrate(db)
+        if (await db.query("SELECT COUNT(*) AS n FROM actuals"))[0]["n"]:
+            log.info("Data already loaded, skipping refresh (--if-empty)")
+            return
+    start, end = uk_day_bounds(args.start, args.end)
+    log.info("Refreshing UK delivery days %s to %s (end exclusive)", args.start, args.end)
     async with httpx.AsyncClient(base_url=settings.elexon_base_url, timeout=60) as client:
         counts = await refresh(db, client, start, end)
     log.info("Stored %(actuals)d actuals and %(forecasts)d forecasts", counts)
@@ -49,8 +53,9 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="create or update database tables")
     ref = sub.add_parser("refresh", help="fetch data from Elexon and store it")
-    ref.add_argument("--start", type=date.fromisoformat, default=DEFAULT_START, help="first target date (UTC)")
-    ref.add_argument("--end", type=date.fromisoformat, default=DEFAULT_END, help="end target date, exclusive (UTC)")
+    ref.add_argument("--start", type=date.fromisoformat, default=DEFAULT_START, help="first UK delivery day")
+    ref.add_argument("--end", type=date.fromisoformat, default=DEFAULT_END, help="end UK delivery day, exclusive")
+    ref.add_argument("--if-empty", action="store_true", help="only load if the database has no data yet")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     asyncio.run(_main(parser.parse_args()))

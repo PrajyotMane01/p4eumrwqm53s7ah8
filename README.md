@@ -14,7 +14,7 @@ Scope, as set by the brief: national wind only, from two Elexon BMRS datasets ([
 
 **Accuracy view.** It shows MAE, bias, RMSE, P10/P50/P90 error and the share of half-hours that were over-forecast, plus a plain-language buying summary. Charts break the error down by error size, by forecast wind level and by hour of day. A worst-days table links each day back to the Day-ahead view.
 
-**Data view.** It shows what is loaded and where it came from: delivery days and completeness, forecast runs, when the data was last loaded (or that it was fetched live), daily coverage per UK delivery day, short definitions of both Elexon datasets, and the load history.
+**Data view.** It explains how data is served (the database as primary, the live Elexon API as fallback, with the one in use marked) and shows what is loaded: delivery days and completeness, forecast runs, when the data was last loaded (or that it was fetched live), daily coverage per UK delivery day, short definitions of both Elexon datasets, and the load history.
 
 The Day-ahead and Accuracy views share the filters for date range and cutoff. Filters live in the URL, so any view can be bookmarked or shared, for example `?view=accuracy&start=2026-01-10&end=2026-01-20&cutoff=09:20`.
 
@@ -58,7 +58,7 @@ flowchart LR
 
 - **Backend:** FastAPI (Python 3.12, async) with pandas and NumPy. The selection rule uses `pandas.merge_asof` to pick the latest run published at or before each cutoff.
 - **Database:** Cloudflare D1 in production, or a local SQLite file. D1 is SQLite, so both use the same schema and SQL. Python talks to D1 over its HTTP API, with inserts batched under D1's 100-parameter limit.
-- **Fallback:** if the database cannot be read (an expired token, an outage, missing credentials), the API fetches the January window straight from Elexon with the same loader code, about 9 seconds on first request and cached after that. `/coverage` reports `source: "elexon"` and the sidebar says so. Only if Elexon is also unavailable does the API return 503. Turn it off with `ELEXON_FALLBACK=false`.
+- **Fallback:** if the database cannot be read (an expired token, an outage, missing credentials), the API fetches the January window straight from Elexon with the same loader code, about 9 seconds on first request and cached after that. `/coverage` reports `source: "elexon"`, and the sidebar status changes from "Database · Cloudflare D1" to "Live Elexon API". Only if Elexon is also unavailable does the API return 503. Turn it off with `ELEXON_FALLBACK=false`.
 - **Frontend:** React 19 + TypeScript (Vite), TanStack Query for data fetching and ECharts for charts. Filters are validated, clamped and normalised when read from the URL.
 - **Deployment:** Vercel, with two [Services](https://vercel.com/docs/services) in one project: the Vite static site, and FastAPI as a Python function under `/api`.
 

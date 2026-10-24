@@ -12,6 +12,26 @@ type Props = { coverage?: Coverage; view?: View; onNavigate?: (view: View) => vo
 
 type NavButtonProps = { label: string; icon: typeof Wind; active: boolean; onClick: () => void }
 
+/** Where the data on screen comes from: the database, or the live Elexon API fallback. */
+function SourceStatus({ coverage }: { coverage: Coverage }) {
+  const live = coverage.source === 'elexon'
+  return (
+    <div className={`source-status${live ? ' is-live' : ''}`} role="status">
+      <span className="source-dot" aria-hidden />
+      <div>
+        <p className="source-status-title">{live ? 'Live Elexon API' : `Database · ${coverage.database}`}</p>
+        <p className="source-status-meta">
+          {live
+            ? 'Fallback: the database is unavailable'
+            : coverage.refreshed_at
+              ? `Loaded ${formatUkDateTime(coverage.refreshed_at)} UK`
+              : 'Serving stored data'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function NavButton({ label, icon: Icon, active, onClick }: NavButtonProps) {
   return (
     <button
@@ -42,19 +62,12 @@ export function Sidebar({ coverage, view, onNavigate }: Props) {
         ))}
       </nav>
 
-      <div className="source-card">
-        <p className="source-title">Data source</p>
-        <p>Elexon BMRS: FUELHH actuals and WINDFOR forecasts, GB national wind.</p>
-        {coverage?.source === 'elexon' ? (
-          <p className="source-meta">Live from Elexon: the database is unavailable, so data was fetched directly.</p>
-        ) : (
-          coverage?.refreshed_at && <p className="source-meta">Loaded {formatUkDateTime(coverage.refreshed_at)} UK</p>
-        )}
+      <div className="sidebar-footer">
+        {coverage && <SourceStatus coverage={coverage} />}
+        <nav className="nav" aria-label="Data">
+          <NavButton label="Data" icon={Database} active={view === 'data'} onClick={() => onNavigate?.('data')} />
+        </nav>
       </div>
-
-      <nav className="nav nav-footer" aria-label="Data">
-        <NavButton label="Data" icon={Database} active={view === 'data'} onClick={() => onNavigate?.('data')} />
-      </nav>
     </aside>
   )
 }

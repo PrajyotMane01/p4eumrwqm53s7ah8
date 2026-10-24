@@ -4,6 +4,7 @@ export type Coverage = {
   refreshed_at: string | null
   default_cutoff: string // "HH:MM:SS"
   source: 'database' | 'elexon' // 'elexon': database unavailable, fetched live
+  database: 'Cloudflare D1' | 'SQLite'
 }
 
 export type SeriesPoint = {
@@ -80,6 +81,7 @@ export const fetchMetrics = (query: SeriesQuery) => getJson<Metrics>('/api/v1/me
 
 export type DataStatus = {
   source: 'database' | 'elexon'
+  database: 'Cloudflare D1' | 'SQLite'
   refreshed_at: string | null
   first_date: string | null
   last_date: string | null

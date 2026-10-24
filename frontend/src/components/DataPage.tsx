@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarRange, Clock3, Layers, ListChecks } from 'lucide-react'
+import { CalendarRange, Clock3, Database, Layers, ListChecks, Radio } from 'lucide-react'
 import { fetchDataStatus } from '../lib/api'
 import { formatDate, formatUkDateTime } from '../lib/ukTime'
 import { ErrorNotice } from './ErrorNotice'
@@ -66,10 +66,48 @@ export function DataPage() {
         <StatCard
           label="Last loaded"
           value={d.source === 'elexon' ? 'Live' : d.refreshed_at ? formatUkDateTime(d.refreshed_at) : '–'}
-          detail={d.source === 'elexon' ? 'Fetched from Elexon: database unavailable' : 'From the database, UK time'}
+          detail={d.source === 'elexon' ? 'Fetched live from the Elexon API' : `From the database (${d.database}), UK time`}
           icon={Clock3}
         />
       </div>
+
+      <section className="card">
+        <div className="card-head">
+          <div>
+            <h2>How data is served</h2>
+            <p className="card-sub">
+              Data is loaded from Elexon into a database and served from there. If the database cannot be read, the
+              API falls back to Elexon directly, so the app keeps working.
+            </p>
+          </div>
+        </div>
+        <div className="serve-grid">
+          <article className={`serve-item${d.source === 'database' ? ' is-active' : ''}`}>
+            <div className="serve-head">
+              <Database size={18} aria-hidden />
+              <h3>Database · {d.database}</h3>
+              <span className="serve-role">Primary</span>
+              {d.source === 'database' && <span className="badge is-under">In use</span>}
+            </div>
+            <p>
+              The loader fetches FUELHH and WINDFOR from Elexon, cleans them and stores them. The API reads the stored
+              copy once and keeps it in memory for 15 minutes, so pages load fast and don't depend on Elexon.
+            </p>
+          </article>
+          <article className={`serve-item${d.source === 'elexon' ? ' is-active is-live' : ''}`}>
+            <div className="serve-head">
+              <Radio size={18} aria-hidden />
+              <h3>Live Elexon API</h3>
+              <span className="serve-role">Fallback</span>
+              {d.source === 'elexon' && <span className="badge is-over">In use</span>}
+            </div>
+            <p>
+              Used automatically if the database cannot be read. The January data is fetched straight from Elexon with
+              the same processing, so the figures are identical; only the first load is slower, about 9 seconds.
+            </p>
+          </article>
+        </div>
+      </section>
 
       <section className="card">
         <div className="card-head">

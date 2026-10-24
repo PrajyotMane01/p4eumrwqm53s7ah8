@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.analysis import metrics
 from app.analysis.selection import DEFAULT_CUTOFF, UK, half_hours, select_day_ahead
+from app.config import get_settings
 from app.data_store import DataUnavailableError, Snapshot, get_data_store
 from app.schemas import AccuracySummary, Coverage, DataStatus, DayCoverage, IngestRun, Metrics, Series, SeriesPoint
 
@@ -28,6 +29,10 @@ def _delivery_dates(snap: Snapshot) -> tuple[date | None, date | None]:
     return (complete[0], complete[-1]) if complete else (None, None)
 
 
+def _database_name() -> str:
+    return "Cloudflare D1" if get_settings().db_backend == "d1" else "SQLite"
+
+
 def _none_if_missing(value: object) -> object:
     return None if pd.isna(value) else value
 
@@ -41,6 +46,7 @@ async def coverage(snap: Annotated[Snapshot, Depends(snapshot)]) -> Coverage:
         refreshed_at=snap.refreshed_at,
         default_cutoff=DEFAULT_CUTOFF,
         source=snap.source,
+        database=_database_name(),
     )
 
 
@@ -155,6 +161,7 @@ async def data_status(snap: Annotated[Snapshot, Depends(snapshot)]) -> DataStatu
             day += timedelta(days=1)
     return DataStatus(
         source=snap.source,
+        database=_database_name(),
         refreshed_at=snap.refreshed_at,
         first_date=first,
         last_date=last,

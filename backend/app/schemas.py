@@ -12,6 +12,7 @@ class Coverage(BaseModel):
     source: Literal["database", "elexon"] = Field(
         description="'elexon' when the database was unavailable and data was fetched live from Elexon"
     )
+    database: Literal["Cloudflare D1", "SQLite"] = Field(description="The configured primary database")
 
 
 class SeriesPoint(BaseModel):
@@ -101,6 +102,7 @@ class IngestRun(BaseModel):
 
 class DataStatus(BaseModel):
     source: Literal["database", "elexon"]
+    database: Literal["Cloudflare D1", "SQLite"] = Field(description="The configured primary database")
     refreshed_at: datetime | None
     first_date: date | None
     last_date: date | None

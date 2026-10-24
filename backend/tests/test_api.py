@@ -200,12 +200,13 @@ def test_503_when_database_and_elexon_are_both_unavailable(monkeypatch: pytest.M
 
 
 def test_coverage_reports_database_as_source() -> None:
-    assert client.get("/api/v1/coverage").json()["source"] == "database"
+    body = client.get("/api/v1/coverage").json()
+    assert (body["source"], body["database"]) == ("database", "SQLite")
 
 
 def test_data_status_reports_coverage_runs_and_loads() -> None:
     body = client.get("/api/v1/data").json()
-    assert body["source"] == "database"
+    assert (body["source"], body["database"]) == ("database", "SQLite")
     assert (body["first_date"], body["last_date"]) == ("2026-01-15", "2026-01-16")  # complete days only
     assert (body["actual_rows"], body["forecast_rows"], body["forecast_runs"]) == (98, 2, 2)
     assert [(d["delivery_date"], d["actual_half_hours"], d["expected_half_hours"]) for d in body["days"]] == [

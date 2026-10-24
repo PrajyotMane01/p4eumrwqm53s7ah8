@@ -1,0 +1,17 @@
+:root {
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #e8e8e8;
+    background: #121212;
+  }
+}
+
+body {
+  margin: 0;
+}

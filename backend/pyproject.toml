@@ -1,0 +1,19 @@
+[project]
+name = "wind-forecast-backend"
+version = "0.1.0"
+description = "API for UK wind generation forecasts and their accuracy"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "httpx>=0.27",
+    "pydantic-settings>=2.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
